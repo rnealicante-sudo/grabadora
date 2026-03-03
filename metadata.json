@@ -1,0 +1,7 @@
+{
+  "name": "Revox-rec",
+  "description": "Graba, transcribe y analiza tus audios con inteligencia artificial avanzada.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
