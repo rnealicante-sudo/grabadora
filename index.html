@@ -4,20 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>grabadora | IA Pro</title>
     
     <!-- Fuentes -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Librerías Externas -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/@google/genai@0.1.0/dist/index.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
 
     <script>
@@ -36,7 +34,7 @@
     <style type="text/css">
         :root {
             --bg: #0A0A0B;
-            --card: rgba(21, 22, 25, 0.8);
+            --card: rgba(21, 22, 25, 0.9);
             --accent: #FF4444;
         }
         
@@ -46,7 +44,6 @@
             margin: 0;
             padding: 0;
             -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: contain;
             min-height: 100vh;
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;
@@ -64,20 +61,18 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
         
         @keyframes pulse-red {
-            0%, 100% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.1); border-color: rgba(255, 255, 255, 0.05); }
-            50% { box-shadow: 0 0 40px rgba(255, 68, 68, 0.3); border-color: rgba(255, 68, 68, 0.2); }
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.1); }
+            50% { box-shadow: 0 0 40px rgba(255, 68, 68, 0.3); }
         }
-        .recording-active { animation: pulse-red 2s infinite; }
+        .recording-active { animation: pulse-red 2s infinite; border-color: rgba(255, 68, 68, 0.3); }
 
-        .btn-press { transform: scale(0.92); transition: transform 0.1s ease; }
-        .transition-all { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-press { transform: scale(0.94); transition: transform 0.1s ease; }
         
-        /* Optimización para móviles: evitar selección de texto */
         * { -webkit-user-select: none; user-select: none; }
         input, textarea { -webkit-user-select: text; user-select: text; }
 
         .format-pill {
-            @apply px-4 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all border border-white/5 bg-white/5 flex-1 text-center;
+            @apply px-4 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all border border-white/5 bg-white/5 flex-1 text-center;
         }
         .format-pill.active {
             @apply bg-white text-black shadow-lg border-white;
@@ -85,76 +80,75 @@
     </style>
 </head>
 <body>
-    <div id="app" class="min-h-screen p-4 md:p-8 max-w-2xl mx-auto font-sans pb-32 w-full">
+    <div id="app" class="min-h-screen p-4 md:p-6 max-w-xl mx-auto font-sans pb-32 w-full">
         <!-- Header -->
-        <header class="mb-8 flex items-center justify-between">
+        <header class="mb-6 flex items-center justify-between">
             <div>
-                <h1 class="text-4xl font-black tracking-tighter text-white">grabadora<span class="text-[#FF4444]">.</span></h1>
-                <p class="text-gray-500 text-[10px] uppercase tracking-[0.3em] font-bold mt-1">IA Audio Intelligence</p>
+                <h1 class="text-3xl font-black tracking-tighter text-white">grabadora<span class="text-[#FF4444]">.</span></h1>
+                <p class="text-gray-500 text-[9px] uppercase tracking-[0.3em] font-bold mt-0.5">IA Audio Intelligence</p>
             </div>
-            <div id="status-badge" class="flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5">
-                <div id="status-dot" class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                <span id="status-text" class="text-[10px] font-mono uppercase tracking-widest text-gray-400">Listo</span>
+            <div id="status-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5">
+                <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                <span id="status-text" class="text-[9px] font-mono uppercase tracking-widest text-gray-400">Listo</span>
             </div>
         </header>
 
         <!-- Format Selector -->
-        <div class="mb-8 space-y-3">
-            <div class="flex items-center justify-between px-2">
-                <span class="text-[10px] font-black uppercase tracking-widest text-gray-500">Formato</span>
-                <span id="format-info" class="text-[9px] font-mono text-emerald-500 uppercase">MP3 Estándar</span>
+        <div class="mb-6 space-y-2">
+            <div class="flex items-center justify-between px-1">
+                <span class="text-[9px] font-black uppercase tracking-widest text-gray-500">Formato de Audio</span>
+                <span id="format-info" class="text-[8px] font-mono text-emerald-500 uppercase">Compacto (Por defecto)</span>
             </div>
-            <div class="flex gap-3">
-                <button id="fmt-mp3" onclick="setFormat('mp3')" class="format-pill active">MP3</button>
-                <button id="fmt-small" onclick="setFormat('webm')" class="format-pill">Compacto</button>
+            <div class="flex gap-2 bg-white/5 p-1 rounded-xl border border-white/5">
+                <button id="fmt-small" onclick="setFormat('webm')" class="format-pill active">Compacto</button>
+                <button id="fmt-mp3" onclick="setFormat('mp3')" class="format-pill">MP3</button>
             </div>
         </div>
 
         <!-- Recording Panel -->
-        <div id="recording-panel" class="glass rounded-[3.5rem] p-8 md:p-12 mb-12 transition-all relative overflow-hidden">
+        <div id="recording-panel" class="glass rounded-[2.5rem] p-6 md:p-10 mb-8 transition-all relative overflow-hidden">
             <div class="flex flex-col items-center relative z-10">
                 <!-- VU Meter -->
-                <div id="vu-meter" class="flex gap-2 h-14 items-center mb-10"></div>
+                <div id="vu-meter" class="flex gap-1.5 h-10 items-center mb-8"></div>
 
-                <div id="timer" class="text-7xl md:text-8xl font-bold font-mono tracking-tighter mb-12 tabular-nums text-white">00:00</div>
+                <div id="timer" class="text-6xl md:text-7xl font-bold font-mono tracking-tighter mb-10 tabular-nums text-white">00:00</div>
 
-                <div class="flex items-center gap-3 mb-12 bg-black/40 p-2 rounded-2xl border border-white/5 w-full max-w-[280px]">
-                    <button id="btn-standard" onclick="setMode(false)" class="flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all bg-white text-black shadow-lg">Estándar</button>
-                    <button id="btn-speaker" onclick="setMode(true)" class="flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all text-gray-500 hover:text-gray-300">Altavoz</button>
+                <div class="flex items-center gap-2 mb-10 bg-black/40 p-1.5 rounded-xl border border-white/5 w-full max-w-[240px]">
+                    <button id="btn-standard" onclick="setMode(false)" class="flex-1 py-2.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all bg-white text-black">Estándar</button>
+                    <button id="btn-speaker" onclick="setMode(true)" class="flex-1 py-2.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all text-gray-500">Altavoz</button>
                 </div>
 
-                <div id="controls" class="flex items-center gap-8 md:gap-12 w-full justify-center">
-                    <button id="btn-record" onclick="startRecording()" class="group flex flex-col items-center gap-4 transition-all hover:scale-105 active:btn-press">
-                        <div class="w-32 h-32 md:w-40 md:h-40 rounded-full bg-[#FF4444] flex items-center justify-center shadow-[0_0_60px_rgba(255,68,68,0.4)]">
-                            <div class="w-12 h-12 rounded-full bg-white"></div>
+                <div id="controls" class="flex items-center gap-8 w-full justify-center">
+                    <button id="btn-record" onclick="startRecording()" class="group flex flex-col items-center gap-3 transition-all hover:scale-105 active:btn-press">
+                        <div class="w-28 h-28 md:w-32 md:h-32 rounded-full bg-[#FF4444] flex items-center justify-center shadow-[0_0_40px_rgba(255,68,68,0.3)]">
+                            <div class="w-10 h-10 rounded-full bg-white"></div>
                         </div>
-                        <span class="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400">Grabar</span>
+                        <span class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Grabar</span>
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- History -->
-        <div class="space-y-6">
-            <div class="flex items-center justify-between px-4 mb-6">
-                <div class="flex items-center gap-3">
-                    <i data-lucide="History" class="text-[#FF4444] w-5 h-5"></i>
-                    <h2 class="text-2xl font-bold tracking-tight">Historial</h2>
+        <div class="space-y-4">
+            <div class="flex items-center justify-between px-2 mb-4">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="History" class="text-[#FF4444] w-4 h-4"></i>
+                    <h2 class="text-xl font-bold tracking-tight">Historial</h2>
                 </div>
-                <span id="record-count" class="text-[10px] font-mono text-gray-500 uppercase tracking-widest bg-white/5 px-4 py-1.5 rounded-full border border-white/5">0 Archivos</span>
+                <span id="record-count" class="text-[8px] font-mono text-gray-500 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full border border-white/5">0 Archivos</span>
             </div>
             
-            <div id="recordings-list" class="space-y-6">
-                <div class="text-center py-24 text-gray-600 border-2 border-dashed border-white/5 rounded-[3rem] bg-white/[0.02]">
-                    <i data-lucide="Volume2" class="mx-auto mb-6 opacity-5 w-12 h-12"></i>
-                    <p class="text-xs uppercase tracking-[0.3em] font-black">Sin grabaciones</p>
-                    <p class="text-[10px] mt-2 opacity-40">Toca el botón rojo para empezar</p>
+            <div id="recordings-list" class="space-y-4">
+                <div class="text-center py-16 text-gray-600 border-2 border-dashed border-white/5 rounded-[2rem] bg-white/[0.02]">
+                    <i data-lucide="Volume2" class="mx-auto mb-4 opacity-5 w-10 h-10"></i>
+                    <p class="text-[10px] uppercase tracking-[0.2em] font-black">Sin grabaciones</p>
                 </div>
             </div>
         </div>
         
-        <footer class="mt-24 py-12 border-t border-white/5 text-center">
-            <p class="text-[10px] text-gray-600 uppercase tracking-[0.5em] font-black">grabadora • IA Pro Mobile</p>
+        <footer class="mt-16 py-8 border-t border-white/5 text-center">
+            <p class="text-[9px] text-gray-600 uppercase tracking-[0.4em] font-black">grabadora • IA v2.0</p>
         </footer>
     </div>
 
@@ -165,7 +159,7 @@
             isRecording: false,
             isPaused: false,
             isSpeakerMode: true,
-            outputFormat: 'mp3',
+            outputFormat: 'webm', // WebM por defecto
             recordingTime: 0,
             volume: 0,
             recordings: []
@@ -184,45 +178,45 @@
         function updateUI() {
             const dot = document.getElementById('status-dot');
             const text = document.getElementById('status-text');
-            dot.className = `w-2 h-2 rounded-full ${state.isRecording ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`;
+            dot.className = `w-1.5 h-1.5 rounded-full ${state.isRecording ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`;
             text.innerText = state.isRecording ? 'Grabando' : 'Listo';
 
             document.getElementById('timer').innerText = formatTime(state.recordingTime);
 
             const panel = document.getElementById('recording-panel');
-            panel.className = `glass rounded-[3.5rem] p-8 md:p-12 mb-12 transition-all relative overflow-hidden ${state.isRecording ? 'recording-active' : ''}`;
+            panel.className = `glass rounded-[2.5rem] p-6 md:p-10 mb-8 transition-all relative overflow-hidden ${state.isRecording ? 'recording-active' : ''}`;
 
-            document.getElementById('btn-standard').className = `flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${!state.isSpeakerMode ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-gray-300'}`;
-            document.getElementById('btn-speaker').className = `flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${state.isSpeakerMode ? 'bg-[#FF4444] text-white shadow-[0_0_20px_rgba(255,68,68,0.3)]' : 'text-gray-500 hover:text-gray-300'}`;
+            document.getElementById('btn-standard').className = `flex-1 py-2.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${!state.isSpeakerMode ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-gray-300'}`;
+            document.getElementById('btn-speaker').className = `flex-1 py-2.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${state.isSpeakerMode ? 'bg-[#FF4444] text-white shadow-[0_0_20px_rgba(255,68,68,0.3)]' : 'text-gray-500 hover:text-gray-300'}`;
 
             document.getElementById('fmt-mp3').className = `format-pill ${state.outputFormat === 'mp3' ? 'active' : ''}`;
             document.getElementById('fmt-small').className = `format-pill ${state.outputFormat === 'webm' ? 'active' : ''}`;
-            document.getElementById('format-info').innerText = state.outputFormat === 'mp3' ? 'MP3 Estándar' : 'WebM Compacto';
+            document.getElementById('format-info').innerText = state.outputFormat === 'mp3' ? 'Alta Calidad (MP3)' : 'Compacto (WebM)';
 
             const controls = document.getElementById('controls');
             if (!state.isRecording) {
                 controls.innerHTML = `
-                    <button id="btn-record" onclick="startRecording()" class="group flex flex-col items-center gap-4 transition-all hover:scale-105 active:btn-press">
-                        <div class="w-32 h-32 md:w-40 md:h-40 rounded-full bg-[#FF4444] flex items-center justify-center shadow-[0_0_60px_rgba(255,68,68,0.4)]">
-                            <div class="w-12 h-12 rounded-full bg-white"></div>
+                    <button id="btn-record" onclick="startRecording()" class="group flex flex-col items-center gap-3 transition-all hover:scale-105 active:btn-press">
+                        <div class="w-28 h-28 md:w-32 md:h-32 rounded-full bg-[#FF4444] flex items-center justify-center shadow-[0_0_40px_rgba(255,68,68,0.3)]">
+                            <div class="w-10 h-10 rounded-full bg-white"></div>
                         </div>
-                        <span class="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400">Grabar</span>
+                        <span class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Grabar</span>
                     </button>
                 `;
             } else {
                 controls.innerHTML = `
-                    <div class="flex items-center gap-8 md:gap-12 w-full justify-center">
-                        <button id="btn-pause" onclick="togglePause()" class="group flex flex-col items-center gap-4 transition-all active:btn-press">
-                            <div class="w-24 h-24 md:w-28 md:h-28 rounded-full bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-md">
-                                <i data-lucide="${state.isPaused ? 'Play' : 'Pause'}" class="text-white w-8 h-8"></i>
+                    <div class="flex items-center gap-6 w-full justify-center">
+                        <button id="btn-pause" onclick="togglePause()" class="group flex flex-col items-center gap-3 transition-all active:btn-press">
+                            <div class="w-20 h-20 rounded-full bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-md">
+                                <i data-lucide="${state.isPaused ? 'Play' : 'Pause'}" class="text-white w-6 h-6"></i>
                             </div>
-                            <span class="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">${state.isPaused ? 'Seguir' : 'Pausa'}</span>
+                            <span class="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500">${state.isPaused ? 'Seguir' : 'Pausa'}</span>
                         </button>
-                        <button id="btn-stop" onclick="stopRecording()" class="group flex flex-col items-center gap-4 transition-all active:btn-press">
-                            <div class="w-32 h-32 md:w-40 md:h-40 rounded-[3rem] bg-white flex items-center justify-center shadow-2xl">
-                                <div class="w-12 h-12 bg-black rounded-xl"></div>
+                        <button id="btn-stop" onclick="stopRecording()" class="group flex flex-col items-center gap-3 transition-all active:btn-press">
+                            <div class="w-28 h-28 rounded-[2rem] bg-white flex items-center justify-center shadow-xl">
+                                <div class="w-10 h-10 bg-black rounded-lg"></div>
                             </div>
-                            <span class="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">Parar</span>
+                            <span class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Parar</span>
                         </button>
                     </div>
                 `;
@@ -236,10 +230,10 @@
         function renderVUMeter() {
             const vu = document.getElementById('vu-meter');
             if (!vu) return;
-            vu.innerHTML = Array.from({length: 18}).map((_, i) => {
-                const isActive = state.volume > (i/18)*100;
-                const color = i > 15 ? 'bg-red-500' : i > 11 ? 'bg-yellow-500' : 'bg-emerald-500';
-                return `<div class="w-2 rounded-full transition-all duration-75 ${color}" style="height: ${isActive ? Math.max(15, state.volume*0.9) : 8}%; opacity: ${isActive ? 1 : 0.15}"></div>`;
+            vu.innerHTML = Array.from({length: 15}).map((_, i) => {
+                const isActive = state.volume > (i/15)*100;
+                const color = i > 12 ? 'bg-red-500' : i > 9 ? 'bg-yellow-500' : 'bg-emerald-500';
+                return `<div class="w-1.5 rounded-full transition-all duration-75 ${color}" style="height: ${isActive ? Math.max(12, state.volume*0.7) : 6}%; opacity: ${isActive ? 1 : 0.15}"></div>`;
             }).join('');
         }
 
@@ -247,69 +241,68 @@
             const list = document.getElementById('recordings-list');
             if (state.recordings.length === 0) {
                 list.innerHTML = `
-                    <div class="text-center py-24 text-gray-600 border-2 border-dashed border-white/5 rounded-[3rem] bg-white/[0.02]">
-                        <i data-lucide="Volume2" class="mx-auto mb-6 opacity-5 w-12 h-12"></i>
-                        <p class="text-xs uppercase tracking-[0.3em] font-black">Sin grabaciones</p>
-                        <p class="text-[10px] mt-2 opacity-40">Toca el botón rojo para empezar</p>
+                    <div class="text-center py-16 text-gray-600 border-2 border-dashed border-white/5 rounded-[2rem] bg-white/[0.02]">
+                        <i data-lucide="Volume2" class="mx-auto mb-4 opacity-5 w-10 h-10"></i>
+                        <p class="text-[10px] uppercase tracking-[0.2em] font-black">Sin grabaciones</p>
                     </div>
                 `;
             } else {
                 list.innerHTML = state.recordings.map(rec => `
-                    <div class="glass rounded-[2.5rem] p-7 border border-white/5 hover:border-white/10 transition-all group mb-6">
-                        <div class="flex justify-between items-start mb-6">
+                    <div class="glass rounded-[2rem] p-5 border border-white/5 transition-all group mb-4">
+                        <div class="flex justify-between items-start mb-4">
                             <div class="min-w-0 flex-1">
-                                <h3 class="font-bold text-base truncate pr-4 text-white">${rec.name}</h3>
-                                <div class="flex gap-4 text-[10px] text-gray-500 font-mono uppercase mt-2">
-                                    <span class="flex items-center gap-1.5"><i data-lucide="Clock" class="w-3 h-3"></i> ${formatTime(rec.duration)}</span>
+                                <h3 class="font-bold text-sm truncate pr-2 text-white">${rec.name}</h3>
+                                <div class="flex gap-3 text-[8px] text-gray-500 font-mono uppercase mt-1">
+                                    <span>${formatTime(rec.duration)}</span>
                                     <span class="opacity-20">|</span>
-                                    <span class="flex items-center gap-1.5"><i data-lucide="FileAudio" class="w-3 h-3"></i> ${rec.format.toUpperCase()}</span>
+                                    <span>${rec.format.toUpperCase()}</span>
                                     <span class="opacity-20">|</span>
-                                    <span class="flex items-center gap-1.5"><i data-lucide="Download" class="w-3 h-3"></i> ${(rec.size/1024/1024).toFixed(2)} MB</span>
+                                    <span>${(rec.size/1024/1024).toFixed(2)} MB</span>
                                 </div>
                             </div>
-                            <div class="flex gap-2">
-                                <button onclick="deleteRecording('${rec.id}')" class="w-12 h-12 rounded-2xl flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-500/10 transition-all active:btn-press"><i data-lucide="Trash2" class="w-5 h-5"></i></button>
-                                <a href="${rec.url}" download="${rec.name}.${rec.format}" class="w-12 h-12 rounded-2xl flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all active:btn-press"><i data-lucide="Download" class="w-5 h-5"></i></a>
+                            <div class="flex gap-1.5">
+                                <button onclick="deleteRecording('${rec.id}')" class="w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-500/10 active:btn-press"><i data-lucide="Trash2" class="w-4 h-4"></i></button>
+                                <button onclick="downloadRecording('${rec.id}')" class="w-9 h-9 rounded-xl flex items-center justify-center bg-[#FF4444]/10 text-[#FF4444] border border-[#FF4444]/20 active:btn-press"><i data-lucide="Download" class="w-4 h-4"></i></button>
                             </div>
                         </div>
 
-                        <div class="bg-black/40 rounded-3xl p-6 border border-white/5 shadow-inner">
+                        <!-- Player Compacto -->
+                        <div class="bg-black/30 rounded-2xl p-4 border border-white/5">
                             <audio id="audio-${rec.id}" src="${rec.url}" playsinline></audio>
-                            <div class="w-full bg-white/10 h-2 rounded-full mb-4 overflow-hidden relative">
-                                <div id="progress-${rec.id}" class="absolute inset-y-0 left-0 bg-gradient-to-r from-[#FF4444] to-red-400 transition-all duration-100 rounded-full" style="width: 0%"></div>
+                            <div class="w-full bg-white/5 h-1.5 rounded-full mb-3 overflow-hidden relative">
+                                <div id="progress-${rec.id}" class="absolute inset-y-0 left-0 bg-[#FF4444] transition-all duration-100 rounded-full" style="width: 0%"></div>
                             </div>
-                            <div class="flex justify-between text-[10px] font-mono text-gray-500 mb-6 uppercase tracking-widest font-bold">
-                                <span id="time-${rec.id}">00:00</span>
-                                <span id="dur-${rec.id}">00:00</span>
-                            </div>
-                            <div class="flex justify-center gap-8 items-center">
-                                <button onclick="stopAudio('${rec.id}')" class="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/5 active:btn-press"><i data-lucide="Square" class="w-5 h-5 text-gray-500"></i></button>
-                                <button onclick="toggleAudio('${rec.id}')" class="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-2xl active:btn-press transition-all">
-                                    <i id="play-icon-${rec.id}" data-lucide="Play" class="w-8 h-8 text-black ml-1"></i>
-                                </button>
-                                <div class="w-14"></div>
+                            <div class="flex justify-between items-center">
+                                <span id="time-${rec.id}" class="text-[8px] font-mono text-gray-500">00:00</span>
+                                <div class="flex gap-4 items-center">
+                                    <button onclick="stopAudio('${rec.id}')" class="text-gray-600 active:scale-90"><i data-lucide="Square" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="toggleAudio('${rec.id}')" class="w-10 h-10 rounded-full bg-white flex items-center justify-center active:btn-press">
+                                        <i id="play-icon-${rec.id}" data-lucide="Play" class="w-4 h-4 text-black ml-0.5"></i>
+                                    </button>
+                                </div>
+                                <span id="dur-${rec.id}" class="text-[8px] font-mono text-gray-500">00:00</span>
                             </div>
                         </div>
 
-                        <div class="mt-8">
+                        <div class="mt-4">
                             ${!rec.transcription ? `
-                                <button id="btn-ai-${rec.id}" onclick="analyzeAudio('${rec.id}')" ${rec.isAnalyzing ? 'disabled' : ''} class="w-full bg-white text-black h-16 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-gray-200 disabled:opacity-50 transition-all shadow-xl active:btn-press">
-                                    ${rec.isAnalyzing ? '<div class="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin"></div> Transcribiendo...' : '<i data-lucide="Sparkles" class="w-5 h-5 text-[#FF4444]"></i> Transcripción Completa IA'}
+                                <button onclick="analyzeAudio('${rec.id}')" ${rec.isAnalyzing ? 'disabled' : ''} class="w-full bg-white text-black h-12 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] flex items-center justify-center gap-2 hover:bg-gray-200 disabled:opacity-50 active:btn-press">
+                                    ${rec.isAnalyzing ? '<div class="w-3 h-3 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>' : '<i data-lucide="Sparkles" class="w-3.5 h-3.5 text-[#FF4444]"></i>'} Transcripción Completa IA
                                 </button>
                             ` : `
-                                <div class="w-full space-y-5">
-                                    <div class="bg-black/40 border border-white/10 rounded-3xl p-6 text-sm leading-relaxed text-gray-300 whitespace-pre-wrap max-h-80 overflow-y-auto custom-scrollbar shadow-inner">
-                                        <div class="text-[#FF4444] font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2 text-[10px]">
-                                            <i data-lucide="FileText" class="w-4 h-4"></i> Transcripción Palabra por Palabra
+                                <div class="w-full space-y-3">
+                                    <div class="bg-black/40 border border-white/10 rounded-2xl p-4 text-[11px] leading-relaxed text-gray-300 whitespace-pre-wrap max-h-60 overflow-y-auto custom-scrollbar">
+                                        <div class="text-[#FF4444] font-black uppercase tracking-[0.1em] mb-2 flex items-center gap-1.5 text-[8px]">
+                                            <i data-lucide="FileText" class="w-3 h-3"></i> Transcripción Palabra por Palabra
                                         </div>
                                         ${rec.transcription}
                                     </div>
-                                    <div class="flex gap-3">
-                                        <button onclick="shareEmail('${rec.id}')" class="flex-1 bg-white/5 h-14 rounded-2xl text-[10px] font-bold uppercase flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/5 active:btn-press">
-                                            <i data-lucide="Mail" class="w-4 h-4"></i> Email
+                                    <div class="flex gap-2">
+                                        <button onclick="shareEmail('${rec.id}')" class="flex-1 bg-white/5 h-10 rounded-xl text-[8px] font-bold uppercase flex items-center justify-center gap-1.5 hover:bg-white/10 border border-white/5">
+                                            <i data-lucide="Mail" class="w-3 h-3"></i> Email
                                         </button>
-                                        <button onclick="shareWA('${rec.id}')" class="flex-1 bg-[#25D366]/10 text-[#25D366] h-14 rounded-2xl text-[10px] font-bold uppercase flex items-center justify-center gap-2 hover:bg-[#25D366]/20 transition-all border border-[#25D366]/10 active:btn-press">
-                                            <i data-lucide="MessageCircle" class="w-4 h-4"></i> WhatsApp
+                                        <button onclick="shareWA('${rec.id}')" class="flex-1 bg-[#25D366]/10 text-[#25D366] h-10 rounded-xl text-[8px] font-bold uppercase flex items-center justify-center gap-1.5 hover:bg-[#25D366]/20 border border-[#25D366]/10">
+                                            <i data-lucide="MessageCircle" class="w-3 h-3"></i> WhatsApp
                                         </button>
                                     </div>
                                 </div>
@@ -323,20 +316,11 @@
         // --- LOGIC ---
         async function startRecording() {
             try {
-                // Despertar AudioContext en móviles
-                if (!audioContext) {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
+                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext.state === 'suspended') await audioContext.resume();
 
                 stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: { 
-                        echoCancellation: !state.isSpeakerMode, 
-                        noiseSuppression: !state.isSpeakerMode, 
-                        autoGainControl: true 
-                    } 
+                    audio: { echoCancellation: !state.isSpeakerMode, noiseSuppression: !state.isSpeakerMode, autoGainControl: true } 
                 });
 
                 const source = audioContext.createMediaStreamSource(stream);
@@ -384,14 +368,20 @@
                     }
 
                     const url = URL.createObjectURL(finalBlob);
-                    state.recordings.unshift({
+                    const newRec = {
                         id: Date.now().toString(),
                         blob: finalBlob, url, name: `Grabación ${new Date().toLocaleTimeString()}`,
                         duration: state.recordingTime, size: finalBlob.size, format: format, transcription: null, isAnalyzing: false
-                    });
+                    };
+                    state.recordings.unshift(newRec);
                     state.recordingTime = 0;
                     state.isRecording = false;
                     updateUI();
+                    
+                    // Notificar al usuario
+                    setTimeout(() => {
+                        alert("¡Grabación finalizada! Pulsa el botón de descarga rojo para guardarla en tu dispositivo (habitualmente en la carpeta 'Descargas').");
+                    }, 500);
                 };
 
                 mediaRecorder.start(1000);
@@ -442,6 +432,17 @@
             }
         }
 
+        function downloadRecording(id) {
+            const rec = state.recordings.find(r => r.id === id);
+            if (!rec) return;
+            const a = document.createElement('a');
+            a.href = rec.url;
+            a.download = `${rec.name}.${rec.format}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
         function deleteRecording(id) {
             const rec = state.recordings.find(r => r.id === id);
             if (rec) URL.revokeObjectURL(rec.url);
@@ -449,6 +450,7 @@
             updateUI();
         }
 
+        // --- FIX IA: CONEXIÓN DIRECTA ---
         async function analyzeAudio(id) {
             const rec = state.recordings.find(r => r.id === id);
             if (!rec || rec.isAnalyzing) return;
@@ -457,26 +459,37 @@
             updateUI();
 
             try {
-                const genAI = new window.google.generativeai.GoogleGenerativeAI(GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
                 const reader = new FileReader();
-                const base64Promise = new Promise((resolve, reject) => {
+                const base64Promise = new Promise((resolve) => {
                     reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
+                    reader.readAsDataURL(rec.blob);
                 });
-                reader.readAsDataURL(rec.blob);
                 const base64Data = await base64Promise;
 
-                const result = await model.generateContent([
-                    "Eres un transcriptor profesional experto en español. Tu tarea es realizar una TRANSCRIPCIÓN COMPLETA Y LITERAL del audio adjunto, palabra por palabra, sin omitir nada. Después de la transcripción completa, añade una sección de 'Resumen y Puntos Clave'. Por favor, utiliza un formato claro y profesional.",
-                    { inlineData: { mimeType: rec.blob.type, data: base64Data } }
-                ]);
-                const response = await result.response;
-                rec.transcription = response.text();
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: "Eres un transcriptor profesional. Tu tarea es realizar una TRANSCRIPCIÓN COMPLETA Y LITERAL del audio adjunto, palabra por palabra, sin omitir nada. Después de la transcripción completa, añade una sección de 'Resumen y Puntos Clave'. Por favor, utiliza un formato claro y profesional en español." },
+                            { inlineData: { mimeType: rec.blob.type, data: base64Data } }
+                        ]
+                    }]
+                };
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    rec.transcription = data.candidates[0].content.parts[0].text;
+                } else {
+                    throw new Error("Respuesta de IA vacía");
+                }
             } catch (err) {
                 console.error(err);
-                alert("Error IA: " + (err.message || "No se pudo procesar el audio"));
+                alert("Error IA: " + (err.message || "No se pudo conectar con el servidor de IA"));
             } finally {
                 rec.isAnalyzing = false;
                 updateUI();
@@ -511,7 +524,6 @@
             const audio = document.getElementById(`audio-${id}`);
             const icon = document.getElementById(`play-icon-${id}`);
             if (audio.paused) {
-                // Pausar otros audios
                 document.querySelectorAll('audio').forEach(a => {
                     if (a.id !== `audio-${id}`) {
                         a.pause();
