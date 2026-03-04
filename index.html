@@ -373,51 +373,68 @@
         // --- DEVICE MANAGEMENT ---
         async function initDevices() {
             try {
+                console.log("Iniciando detección de dispositivos...");
                 // Pedimos permiso primero para obtener los nombres de los dispositivos
                 const initialStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 state.mics = devices.filter(d => d.kind === 'audioinput');
                 
+                console.log("Micrófonos encontrados:", state.mics.length);
+                
                 const select = document.getElementById('mic-select');
-                select.innerHTML = state.mics.map(m => 
-                    `<option value="${m.deviceId}">${m.label || 'Micro ' + m.deviceId.slice(0,5)}</option>`
-                ).join('');
+                if (state.mics.length === 0) {
+                    select.innerHTML = `<option value="">No se encontraron micrófonos</option>`;
+                } else {
+                    select.innerHTML = state.mics.map(m => 
+                        `<option value="${m.deviceId}">${m.label || 'Micro ' + m.deviceId.slice(0,5)}</option>`
+                    ).join('');
+                }
 
-                // Detener el stream inicial
+                // Detener el stream inicial para liberar el recurso
                 initialStream.getTracks().forEach(t => t.stop());
 
-                if (state.mics.length > 0) {
-                    setupAudioEngine();
-                }
+                // No inicializamos el motor de audio automáticamente aquí para evitar bloqueos del navegador
+                // Esperamos a que el usuario interactúe o seleccione uno
             } catch (e) {
                 console.error("Error enumerando dispositivos:", e);
-                document.getElementById('mic-select').innerHTML = `<option value="">Error al cargar dispositivos</option>`;
+                document.getElementById('mic-select').innerHTML = `<option value="">Permiso denegado o error de hardware</option>`;
             }
         }
 
         async function setupAudioEngine() {
-            if (!state.audioCtx) {
-                state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-
-            const micId = document.getElementById('mic-select').value;
-            if (state.micStream) {
-                state.micStream.getTracks().forEach(t => t.stop());
-            }
-
             try {
-                state.micStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { 
-                        deviceId: micId ? { exact: micId } : undefined,
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false
-                    }
-                });
+                console.log("Configurando motor de audio...");
+                if (!state.audioCtx) {
+                    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
 
+                if (state.audioCtx.state === 'suspended') {
+                    await state.audioCtx.resume();
+                }
+
+                const select = document.getElementById('mic-select');
+                const micId = select.value;
+                
+                if (!micId && state.mics.length > 0) {
+                    console.warn("No hay micId seleccionado, usando el primero disponible");
+                }
+
+                if (state.micStream) {
+                    state.micStream.getTracks().forEach(t => t.stop());
+                }
+
+                const constraints = {
+                    audio: micId ? { deviceId: { ideal: micId } } : true
+                };
+
+                console.log("Solicitando stream con constraints:", constraints);
+                state.micStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                if (state.micSource) state.micSource.disconnect();
+                
                 state.micSource = state.audioCtx.createMediaStreamSource(state.micStream);
-                state.micGain = state.audioCtx.createGain();
-                state.micAnalyser = state.audioCtx.createAnalyser();
+                state.micGain = state.micGain || state.audioCtx.createGain();
+                state.micAnalyser = state.micAnalyser || state.audioCtx.createAnalyser();
                 state.micAnalyser.fftSize = 256;
                 state.micAnalyser.smoothingTimeConstant = 0.3;
 
@@ -425,8 +442,10 @@
                 state.micGain.connect(state.micAnalyser);
                 
                 updateVUMeter('mic');
+                console.log("Micrófono configurado y vúmetro activo");
             } catch (e) {
-                console.error("Error configurando micro:", e);
+                console.error("Error crítico configurando micro:", e);
+                alert("Error al acceder al micrófono. Por favor, asegúrate de haber dado permisos y que el dispositivo no esté en uso por otra aplicación.");
             }
         }
 
@@ -535,6 +554,11 @@
 
         // --- LINK GENERATION & BROADCAST ---
         async function launchBroadcast() {
+            // Asegurar que el motor de audio esté listo antes de emitir
+            if (!state.micStream) {
+                await setupAudioEngine();
+            }
+
             if (state.audioCtx && state.audioCtx.state === 'suspended') {
                 await state.audioCtx.resume();
             }
@@ -611,9 +635,23 @@
         // --- INIT ---
         window.addEventListener('load', () => {
             initDevices();
-            setupMediaChannel(); // Inicializar listeners una sola vez
+            setupMediaChannel(); 
             generateRandomRoom();
             lucide.createIcons();
+
+            // Asegurar activación del AudioContext al primer click y tratar de conectar micro
+            document.addEventListener('click', async () => {
+                if (!state.audioCtx) {
+                    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (state.audioCtx.state === 'suspended') {
+                    await state.audioCtx.resume();
+                }
+                // Si no hay micro conectado, intentamos conectar el primero
+                if (!state.micStream && state.mics.length > 0) {
+                    setupAudioEngine();
+                }
+            }, { once: true });
         });
     </script>
 </body>
