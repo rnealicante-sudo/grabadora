@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>grabadora | NEXUS Audio</title>
+    <title>NEXUS Broadcast | Studio Quality Link</title>
     
-    <!-- Fuentes Futuristas -->
+    <!-- Fuentes -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -16,7 +15,6 @@
     
     <!-- Librerías -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
 
     <script>
         tailwind.config = {
@@ -27,8 +25,9 @@
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
-                        neon: '#FF3333',
-                        space: '#050506',
+                        brand: '#FF3333',
+                        surface: '#0A0A0B',
+                        accent: '#00F0FF'
                     }
                 }
             }
@@ -37,467 +36,279 @@
 
     <style type="text/css">
         :root {
-            --bg: #050506;
-            --glass: rgba(15, 16, 20, 0.7);
+            --bg: #0A0A0B;
+            --glass: rgba(20, 20, 22, 0.8);
             --border: rgba(255, 255, 255, 0.08);
-            --neon: #FF3333;
         }
         
         body { 
             background-color: var(--bg); 
-            color: #E0E0E0; 
-            margin: 0;
-            padding: 0;
+            color: #F0F0F0; 
+            font-family: 'Plus Jakarta Sans', sans-serif;
             -webkit-tap-highlight-color: transparent;
             min-height: 100vh;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            overflow-x: hidden;
-            background-image: radial-gradient(circle at 50% -20%, #1a1010 0%, transparent 50%);
+            background-image: 
+                radial-gradient(circle at 0% 0%, #1a1010 0%, transparent 30%),
+                radial-gradient(circle at 100% 100%, #0a1a1a 0%, transparent 30%);
         }
 
         .glass {
             background: var(--glass);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border: 1px solid var(--border);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
         }
 
-        .neon-glow {
-            box-shadow: 0 0 20px rgba(255, 51, 51, 0.2);
+        .btn-action {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-action:active { transform: scale(0.96); }
+
+        .input-nexus {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: white;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .input-nexus:focus {
+            border-color: var(--brand);
+            background: rgba(255,51,51,0.05);
+            outline: none;
         }
 
-        .recording-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        .status-badge {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 20px rgba(255, 51, 51, 0.2); }
-            50% { opacity: 0.8; transform: scale(0.98); box-shadow: 0 0 40px rgba(255, 51, 51, 0.4); }
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
         }
-
-        .modal-enter { animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes modalIn {
-            from { opacity: 0; transform: scale(0.9) translateY(20px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
+        .scanline {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(to right, transparent, var(--brand), transparent);
+            opacity: 0.1;
+            animation: scanline 4s linear infinite;
+            pointer-events: none;
         }
-
-        .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
 
         * { -webkit-user-select: none; user-select: none; outline: none; }
-        .btn-press:active { transform: scale(0.95); }
+        input, select { -webkit-user-select: text; user-select: text; }
     </style>
 </head>
-<body>
-    <div id="app" class="min-h-screen p-5 md:p-10 max-w-xl mx-auto pb-32">
+<body class="pb-20">
+    <div id="app" class="max-w-xl mx-auto p-6">
         <!-- Header -->
-        <header class="mb-10 flex items-center justify-between">
+        <header class="flex items-center justify-between py-8 mb-4">
             <div class="flex flex-col">
-                <h1 class="text-3xl font-extrabold tracking-tighter text-white flex items-center gap-2">
-                    NEXUS<span class="text-neon">.</span>
+                <h1 class="text-2xl font-extrabold tracking-tighter text-white flex items-center gap-2">
+                    NEXUS BROADCAST<span class="text-brand">.</span>
                 </h1>
-                <span class="text-[8px] uppercase tracking-[0.6em] text-gray-500 font-bold">Audio Intelligence System</span>
+                <span class="text-[8px] uppercase tracking-[0.5em] text-gray-500 font-bold">VDO.Ninja HQ Controller</span>
             </div>
-            <div class="glass px-4 py-2 rounded-2xl flex items-center gap-3 border-white/5">
-                <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                <span id="status-text" class="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-400">System Ready</span>
-            </div>
+            <div class="status-badge text-brand border-brand/20">Studio Mode</div>
         </header>
 
-        <!-- Main Interface -->
-        <main class="space-y-8">
-            <!-- VU Meter & Timer -->
-            <div id="main-panel" class="glass rounded-[3.5rem] p-10 flex flex-col items-center relative overflow-hidden transition-all duration-500">
-                <div id="vu-meter" class="flex gap-1.5 h-12 items-center mb-10">
-                    <!-- Bars generated by JS -->
-                </div>
+        <!-- Main Console -->
+        <div class="space-y-6">
+            <!-- Setup Card -->
+            <div class="glass rounded-[2.5rem] p-8 relative overflow-hidden">
+                <div class="scanline"></div>
+                
+                <div class="space-y-6">
+                    <!-- Mic Selection -->
+                    <div class="space-y-2">
+                        <label class="text-[10px] uppercase tracking-widest text-gray-500 font-bold ml-1">Hardware Input</label>
+                        <div class="relative">
+                            <select id="mic-select" class="input-nexus appearance-none pr-10">
+                                <option value="">Cargando micrófonos...</option>
+                            </select>
+                            <i data-lucide="ChevronDown" class="absolute right-4 top-3.5 w-4 h-4 text-gray-500 pointer-events-none"></i>
+                        </div>
+                    </div>
 
-                <div id="timer" class="text-7xl font-bold font-mono tracking-tighter mb-12 tabular-nums text-white">00:00</div>
+                    <!-- Room Name -->
+                    <div class="space-y-2">
+                        <label class="text-[10px] uppercase tracking-widest text-gray-500 font-bold ml-1">Private Room ID</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="room-id" class="input-nexus font-mono" placeholder="SALA_STREAM_HQ">
+                            <button onclick="generateRandomRoom()" class="glass w-12 h-12 rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all">
+                                <i data-lucide="RefreshCcw" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
 
-                <!-- Mode Switcher -->
-                <div class="flex bg-black/40 p-1.5 rounded-2xl border border-white/5 w-full max-w-[240px] mb-12">
-                    <button id="mode-std" onclick="setMode(false)" class="flex-1 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all bg-white text-black">Studio</button>
-                    <button id="mode-spk" onclick="setMode(true)" class="flex-1 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all text-gray-500">Atmosphere</button>
-                </div>
-
-                <!-- Record Button -->
-                <div id="controls" class="relative">
-                    <button id="btn-record" onclick="startRecording()" class="w-32 h-32 rounded-full bg-neon flex items-center justify-center shadow-[0_0_50px_rgba(255,51,51,0.3)] btn-press transition-all hover:scale-105">
-                        <div class="w-10 h-10 rounded-full bg-white"></div>
+                    <!-- Action Button -->
+                    <button id="btn-launch" onclick="launchBroadcast()" class="w-full bg-brand text-white py-5 rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(255,51,51,0.2)] btn-action flex items-center justify-center gap-3">
+                        <i data-lucide="Radio" class="w-5 h-5"></i> Iniciar Emisión Pro
                     </button>
                 </div>
             </div>
 
-            <!-- History Section -->
-            <section>
-                <div class="flex items-center justify-between px-4 mb-6">
-                    <h2 class="text-sm font-bold uppercase tracking-[0.3em] text-gray-500">Archive</h2>
-                    <span id="count" class="text-[9px] font-mono text-neon bg-neon/10 px-3 py-1 rounded-full border border-neon/20">0 UNITS</span>
+            <!-- Links Section -->
+            <div id="links-container" class="hidden space-y-4">
+                <div class="flex items-center justify-between px-2">
+                    <h2 class="text-[10px] font-bold uppercase tracking-[0.4em] text-gray-500">Enlaces Generados</h2>
                 </div>
-                <div id="list" class="space-y-4">
-                    <!-- Items generated by JS -->
-                    <div class="text-center py-20 opacity-20">
-                        <i data-lucide="Layers" class="w-10 h-10 mx-auto mb-4"></i>
-                        <p class="text-[10px] uppercase tracking-widest">No data captured</p>
+
+                <!-- Push Link Card -->
+                <div class="glass rounded-3xl p-6 border-brand/20 bg-brand/[0.02]">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-8 h-8 rounded-lg bg-brand/20 flex items-center justify-center text-brand">
+                            <i data-lucide="Smartphone" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-[10px] font-bold uppercase tracking-widest text-white">Emisión (Móvil/Origen)</h3>
+                            <p class="text-[9px] text-gray-500">Abre este enlace en el dispositivo que enviará el audio</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="push-url" readonly class="input-nexus font-mono text-[10px] py-2 opacity-70">
+                        <button onclick="copyLink('push-url')" class="bg-white/5 hover:bg-white/10 px-4 rounded-xl transition-all">
+                            <i data-lucide="Copy" class="w-4 h-4"></i>
+                        </button>
                     </div>
                 </div>
-            </section>
-        </main>
 
-        <!-- MODAL: CAPTURA COMPLETADA -->
-        <div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 hidden flex items-center justify-center p-6">
-            <div class="glass w-full max-w-sm rounded-[3rem] p-8 modal-enter border-white/10">
-                <div class="text-center mb-8">
-                    <div class="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
-                        <i data-lucide="Check" class="text-emerald-500 w-8 h-8"></i>
+                <!-- View Link Card -->
+                <div class="glass rounded-3xl p-6 border-accent/20 bg-accent/[0.02]">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center text-accent">
+                            <i data-lucide="Monitor" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-[10px] font-bold uppercase tracking-widest text-white">Recepción (PC/OBS)</h3>
+                            <p class="text-[9px] text-gray-500">Usa este enlace en el PC que recibirá el audio</p>
+                        </div>
                     </div>
-                    <h3 class="text-2xl font-black tracking-tighter text-white mb-2">CAPTURA COMPLETADA</h3>
-                    <p class="text-[10px] text-gray-500 uppercase tracking-widest">Selecciona el formato de exportación</p>
-                </div>
-
-                <div class="space-y-3 mb-8">
-                    <button onclick="exportAndClose('mp3')" class="w-full glass py-4 rounded-2xl flex items-center justify-between px-6 hover:bg-white/5 transition-all btn-press group">
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                                <i data-lucide="Music" class="text-blue-500 w-5 h-5"></i>
-                            </div>
-                            <div class="text-left">
-                                <p class="text-xs font-bold text-white">MP3 PRO</p>
-                                <p class="text-[8px] text-gray-500 uppercase">Compatibilidad Total</p>
-                            </div>
-                        </div>
-                        <i data-lucide="ChevronRight" class="w-4 h-4 text-gray-700 group-hover:text-white"></i>
-                    </button>
-
-                    <button onclick="exportAndClose('webm')" class="w-full glass py-4 rounded-2xl flex items-center justify-between px-6 hover:bg-white/5 transition-all btn-press group">
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-                                <i data-lucide="Zap" class="text-purple-500 w-5 h-5"></i>
-                            </div>
-                            <div class="text-left">
-                                <p class="text-xs font-bold text-white">WEBM ULTRA</p>
-                                <p class="text-[8px] text-gray-500 uppercase">Tamaño Reducido</p>
-                            </div>
-                        </div>
-                        <i data-lucide="ChevronRight" class="w-4 h-4 text-gray-700 group-hover:text-white"></i>
-                    </button>
-
-                    <button onclick="exportAndClose('wav')" class="w-full glass py-4 rounded-2xl flex items-center justify-between px-6 hover:bg-white/5 transition-all btn-press group">
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
-                                <i data-lucide="Mic" class="text-orange-500 w-5 h-5"></i>
-                            </div>
-                            <div class="text-left">
-                                <p class="text-xs font-bold text-white">WAV MASTER</p>
-                                <p class="text-[8px] text-gray-500 uppercase">Máxima Fidelidad</p>
-                            </div>
-                        </div>
-                        <i data-lucide="ChevronRight" class="w-4 h-4 text-gray-700 group-hover:text-white"></i>
-                    </button>
-                </div>
-
-                <div class="bg-white/5 rounded-2xl p-4 border border-white/5">
-                    <div class="flex items-center gap-3 text-gray-400 mb-1">
-                        <i data-lucide="Folder" class="w-3.5 h-3.5"></i>
-                        <span class="text-[9px] font-bold uppercase tracking-widest">Ubicación de guardado</span>
+                    <div class="flex gap-2">
+                        <input type="text" id="view-url" readonly class="input-nexus font-mono text-[10px] py-2 opacity-70">
+                        <button onclick="copyLink('view-url')" class="bg-white/5 hover:bg-white/10 px-4 rounded-xl transition-all">
+                            <i data-lucide="Copy" class="w-4 h-4"></i>
+                        </button>
                     </div>
-                    <p class="text-[10px] text-gray-500">El archivo se almacenará en la carpeta <span class="text-white font-bold">Descargas</span> de tu dispositivo.</p>
                 </div>
+            </div>
 
-                <button onclick="closeModal()" class="w-full mt-6 py-3 text-[10px] font-bold uppercase tracking-[0.3em] text-gray-600 hover:text-white transition-colors">Cerrar</button>
+            <!-- Tips Card -->
+            <div class="glass rounded-3xl p-6 border-white/5">
+                <h3 class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
+                    <i data-lucide="Info" class="w-3 h-3"></i> Consejos Calidad de Estudio
+                </h3>
+                <ul class="space-y-3">
+                    <li class="flex gap-3 items-start">
+                        <div class="mt-1 w-1 h-1 rounded-full bg-brand"></div>
+                        <p class="text-[10px] text-gray-500 leading-relaxed"><span class="text-gray-300 font-bold">Auriculares Obligatorios:</span> Al desactivar el eco (echo=0), el sonido por altavoces creará feedback.</p>
+                    </li>
+                    <li class="flex gap-3 items-start">
+                        <div class="mt-1 w-1 h-1 rounded-full bg-brand"></div>
+                        <p class="text-[10px] text-gray-500 leading-relaxed"><span class="text-gray-300 font-bold">Micro Externo:</span> Conecta un micro USB vía OTG para una calidad indistinguible de un estudio.</p>
+                    </li>
+                    <li class="flex gap-3 items-start">
+                        <div class="mt-1 w-1 h-1 rounded-full bg-brand"></div>
+                        <p class="text-[10px] text-gray-500 leading-relaxed"><span class="text-gray-300 font-bold">Red Sólida:</span> Usa Wi-Fi 5GHz o 5G para mantener el bitrate de 256kbps constante.</p>
+                    </li>
+                </ul>
             </div>
         </div>
+
+        <footer class="mt-20 py-10 border-t border-white/5 text-center">
+            <p class="text-[9px] text-gray-600 uppercase tracking-[0.5em] font-black">Powered by NEXUS & VDO.Ninja Technology</p>
+        </footer>
     </div>
 
     <script>
-        // --- STATE ---
+        // --- CONFIG & STATE ---
         let state = {
-            isRecording: false,
-            isPaused: false,
-            isSpeakerMode: false,
-            time: 0,
-            volume: 0,
-            recordings: [],
-            lastCapture: null
+            mics: [],
+            selectedMic: null,
+            roomName: ""
         };
 
-        let mediaRecorder = null;
-        let chunks = [];
-        let timer = null;
-        let audioCtx = null;
-        let analyser = null;
-        let animFrame = null;
-        let pcmData = [];
-        let stream = null;
-
-        // --- UI ---
-        function updateUI() {
-            const dot = document.getElementById('status-dot');
-            const text = document.getElementById('status-text');
-            dot.className = `w-1.5 h-1.5 rounded-full ${state.isRecording ? 'bg-neon recording-pulse' : 'bg-emerald-500'}`;
-            text.innerText = state.isRecording ? 'Capturing...' : 'System Ready';
-
-            document.getElementById('timer').innerText = formatTime(state.time);
-            document.getElementById('main-panel').className = `glass rounded-[3.5rem] p-10 flex flex-col items-center relative overflow-hidden transition-all duration-500 ${state.isRecording ? 'recording-active' : ''}`;
-
-            const controls = document.getElementById('controls');
-            if (!state.isRecording) {
-                controls.innerHTML = `
-                    <button onclick="startRecording()" class="w-32 h-32 rounded-full bg-neon flex items-center justify-center shadow-[0_0_50px_rgba(255,51,51,0.3)] btn-press transition-all hover:scale-105">
-                        <div class="w-10 h-10 rounded-full bg-white"></div>
-                    </button>
-                `;
-            } else {
-                controls.innerHTML = `
-                    <div class="flex items-center gap-8">
-                        <button onclick="togglePause()" class="w-20 h-20 rounded-full glass flex items-center justify-center btn-press border-white/10">
-                            <i data-lucide="${state.isPaused ? 'Play' : 'Pause'}" class="text-white w-6 h-6"></i>
-                        </button>
-                        <button onclick="stopRecording()" class="w-32 h-32 rounded-[2.5rem] bg-white flex items-center justify-center shadow-2xl btn-press">
-                            <div class="w-10 h-10 bg-black rounded-lg"></div>
-                        </button>
-                    </div>
-                `;
-            }
-
-            document.getElementById('mode-std').className = `flex-1 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${!state.isSpeakerMode ? 'bg-white text-black' : 'text-gray-500'}`;
-            document.getElementById('mode-spk').className = `flex-1 py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${state.isSpeakerMode ? 'bg-neon text-white' : 'text-gray-500'}`;
-
-            renderList();
-            lucide.createIcons();
-        }
-
-        function renderVU() {
-            const vu = document.getElementById('vu-meter');
-            if (!vu) return;
-            vu.innerHTML = Array.from({length: 18}).map((_, i) => {
-                const active = state.volume > (i/18)*100;
-                const color = i > 14 ? 'bg-neon' : i > 10 ? 'bg-yellow-500' : 'bg-emerald-500';
-                return `<div class="w-1.5 rounded-full transition-all duration-75 ${color}" style="height: ${active ? Math.max(12, state.volume*0.8) : 6}px; opacity: ${active ? 1 : 0.1}"></div>`;
-            }).join('');
-        }
-
-        function renderList() {
-            const list = document.getElementById('list');
-            document.getElementById('count').innerText = `${state.recordings.length} UNITS`;
-            
-            if (state.recordings.length === 0) {
-                list.innerHTML = `<div class="text-center py-20 opacity-20"><i data-lucide="Layers" class="w-10 h-10 mx-auto mb-4"></i><p class="text-[10px] uppercase tracking-widest">No data captured</p></div>`;
-                return;
-            }
-
-            list.innerHTML = state.recordings.map(rec => `
-                <div class="glass rounded-3xl p-5 border-white/5 group">
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="min-w-0">
-                            <p class="text-xs font-bold text-white truncate">${rec.name}</p>
-                            <p class="text-[8px] font-mono text-gray-500 uppercase mt-1">${formatTime(rec.duration)} • ${rec.format.toUpperCase()} • ${(rec.size/1024/1024).toFixed(2)} MB</p>
-                        </div>
-                        <button onclick="deleteRec('${rec.id}')" class="w-9 h-9 rounded-xl flex items-center justify-center text-gray-600 hover:text-neon hover:bg-neon/10 transition-all"><i data-lucide="Trash2" class="w-4 h-4"></i></button>
-                    </div>
-                    <div class="bg-black/40 rounded-2xl p-4 flex items-center gap-4">
-                        <audio id="audio-${rec.id}" src="${rec.url}"></audio>
-                        <button onclick="toggleAudio('${rec.id}')" class="w-10 h-10 rounded-full bg-white flex items-center justify-center active:scale-90 transition-all">
-                            <i id="icon-${rec.id}" data-lucide="Play" class="w-4 h-4 text-black ml-0.5"></i>
-                        </button>
-                        <div class="flex-1 h-1 bg-white/5 rounded-full overflow-hidden relative">
-                            <div id="prog-${rec.id}" class="absolute inset-y-0 left-0 bg-neon transition-all duration-100" style="width: 0%"></div>
-                        </div>
-                        <a href="${rec.url}" download="${rec.name}.${rec.format}" class="text-gray-500 hover:text-white"><i data-lucide="Download" class="w-4 h-4"></i></a>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // --- CORE ---
-        async function startRecording() {
+        // --- DEVICE MANAGEMENT ---
+        async function initDevices() {
             try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') await audioCtx.resume();
-
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: { echoCancellation: !state.isSpeakerMode, noiseSuppression: !state.isSpeakerMode, autoGainControl: true } 
-                });
-
-                const source = audioCtx.createMediaStreamSource(stream);
-                analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 256;
-                source.connect(analyser);
-
-                // Captura PCM para MP3/WAV
-                const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-                source.connect(processor);
-                processor.connect(audioCtx.destination);
-                pcmData = [];
-                processor.onaudioprocess = (e) => {
-                    if (!state.isRecording || state.isPaused) return;
-                    pcmData.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-                };
-
-                const data = new Uint8Array(analyser.frequencyBinCount);
-                const update = () => {
-                    if (!analyser) return;
-                    analyser.getByteFrequencyData(data);
-                    let sum = 0;
-                    for (let i = 0; i < data.length; i++) sum += data[i];
-                    state.volume = Math.min(100, (sum / data.length / 128) * 100);
-                    renderVU();
-                    animFrame = requestAnimationFrame(update);
-                };
-                update();
-
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-                chunks = [];
-                mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    state.lastCapture = {
-                        pcm: pcmData,
-                        webm: new Blob(chunks, { type: 'audio/webm' }),
-                        duration: state.time,
-                        sampleRate: audioCtx.sampleRate
-                    };
-                    showModal();
-                };
-
-                mediaRecorder.start();
-                state.isRecording = true;
-                state.isPaused = false;
-                timer = setInterval(() => { state.time++; document.getElementById('timer').innerText = formatTime(state.time); }, 1000);
-                updateUI();
+                // Pedimos permiso primero para obtener los nombres de los dispositivos
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                state.mics = devices.filter(d => d.kind === 'audioinput');
+                
+                const select = document.getElementById('mic-select');
+                select.innerHTML = state.mics.map(m => 
+                    `<option value="${m.deviceId}">${m.label || 'Micrófono Desconocido'}</option>`
+                ).join('');
+                
+                if (state.mics.length > 0) state.selectedMic = state.mics[0].deviceId;
             } catch (err) {
-                alert("Access Denied: " + err.message);
+                console.error("Error al listar micros:", err);
+                document.getElementById('mic-select').innerHTML = `<option value="">Error al cargar dispositivos</option>`;
             }
         }
 
-        function stopRecording() {
-            if (mediaRecorder && state.isRecording) {
-                mediaRecorder.stop();
-                clearInterval(timer);
-                cancelAnimationFrame(animFrame);
-                if (stream) stream.getTracks().forEach(t => t.stop());
-                analyser = null;
-                state.isRecording = false;
-                updateUI();
-            }
+        function generateRandomRoom() {
+            const random = Math.random().toString(36).substring(2, 10).toUpperCase();
+            document.getElementById('room-id').value = `NEXUS_${random}`;
         }
 
-        function togglePause() {
-            if (state.isPaused) {
-                mediaRecorder.resume();
-                timer = setInterval(() => { state.time++; document.getElementById('timer').innerText = formatTime(state.time); }, 1000);
-            } else {
-                mediaRecorder.pause();
-                clearInterval(timer);
-            }
-            state.isPaused = !state.isPaused;
-            updateUI();
-        }
-
-        // --- EXPORT ---
-        async function exportAndClose(format) {
-            const cap = state.lastCapture;
-            let blob;
-            let ext = format;
-
-            if (format === 'mp3') {
-                blob = await convertToMp3(cap.pcm, cap.sampleRate);
-            } else if (format === 'wav') {
-                blob = convertToWav(cap.pcm, cap.sampleRate);
-            } else {
-                blob = cap.webm;
-                ext = 'webm';
-            }
-
-            const url = URL.createObjectURL(blob);
-            const name = `NEXUS_${Date.now()}`;
+        // --- LINK GENERATION ---
+        function launchBroadcast() {
+            const roomId = document.getElementById('room-id').value || "SALA_STREAM_HQ";
+            const micId = document.getElementById('mic-select').value;
             
-            state.recordings.unshift({
-                id: Date.now().toString(),
-                blob, url, name, duration: cap.duration, size: blob.size, format: ext
-            });
-
-            // Descarga automática
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${name}.${ext}`;
-            a.click();
-
-            closeModal();
-            state.time = 0;
-            updateUI();
-        }
-
-        async function convertToMp3(pcm, rate) {
-            const encoder = new lamejs.Mp3Encoder(1, rate, 128);
-            const data = [];
-            for (let buf of pcm) {
-                const s = new Int16Array(buf.length);
-                for (let i = 0; i < buf.length; i++) s[i] = buf[i] < 0 ? buf[i] * 0x8000 : buf[i] * 0x7FFF;
-                const mp3 = encoder.encodeBuffer(s);
-                if (mp3.length > 0) data.push(mp3);
-            }
-            const end = encoder.flush();
-            if (end.length > 0) data.push(end);
-            return new Blob(data, { type: 'audio/mp3' });
-        }
-
-        function convertToWav(pcm, rate) {
-            const flat = new Float32Array(pcm.reduce((acc, b) => acc + b.length, 0));
-            let offset = 0;
-            for (let b of pcm) { flat.set(b, offset); offset += b.length; }
+            // Parámetros solicitados para Calidad de Estudio
+            // &ad=${micId} selecciona el micro específico
+            const pushBase = `https://vdo.ninja/?push=${roomId}`;
+            const pushParams = `&audiobitrate=256&stereo=1&echo=0&noise=0&agc=0&codec=opus&ad=${micId}`;
+            const pushUrl = pushBase + pushParams;
             
-            const buf = new ArrayBuffer(44 + flat.length * 2);
-            const view = new DataView(buf);
-            const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
-            
-            writeStr(0, 'RIFF');
-            view.setUint32(4, 36 + flat.length * 2, true);
-            writeStr(8, 'WAVE');
-            writeStr(12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true);
-            view.setUint16(22, 1, true);
-            view.setUint32(24, rate, true);
-            view.setUint32(28, rate * 2, true);
-            view.setUint16(32, 2, true);
-            view.setUint16(34, 16, true);
-            writeStr(36, 'data');
-            view.setUint32(40, flat.length * 2, true);
-            
-            for (let i = 0; i < flat.length; i++) {
-                const s = Math.max(-1, Math.min(1, flat[i]));
-                view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-            }
-            return new Blob([buf], { type: 'audio/wav' });
-        }
+            const viewUrl = `https://vdo.ninja/?view=${roomId}&bitrate=256`;
 
-        // --- HELPERS ---
-        function showModal() { document.getElementById('modal-overlay').classList.remove('hidden'); lucide.createIcons(); }
-        function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
-        function formatTime(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
-        function setMode(m) { if(!state.isRecording) { state.isSpeakerMode = m; updateUI(); } }
-        function deleteRec(id) { state.recordings = state.recordings.filter(r => r.id !== id); updateUI(); }
+            document.getElementById('push-url').value = pushUrl;
+            document.getElementById('view-url').value = viewUrl;
+            document.getElementById('links-container').classList.remove('hidden');
 
-        function toggleAudio(id) {
-            const a = document.getElementById(`audio-${id}`);
-            const i = document.getElementById(`icon-${id}`);
-            if (a.paused) {
-                document.querySelectorAll('audio').forEach(el => { el.pause(); const oid = el.id.split('-')[1]; const oic = document.getElementById(`icon-${oid}`); if(oic) oic.setAttribute('data-lucide', 'Play'); });
-                a.play();
-                i.setAttribute('data-lucide', 'Pause');
-            } else {
-                a.pause();
-                i.setAttribute('data-lucide', 'Play');
+            // Abrir en nueva pestaña si es posible (opcional)
+            if (confirm("¿Quieres abrir el enlace de emisión ahora?")) {
+                window.open(pushUrl, '_blank');
             }
+            
             lucide.createIcons();
-            
-            a.ontimeupdate = () => { document.getElementById(`prog-${id}`).style.width = `${(a.currentTime/a.duration)*100}%`; };
-            a.onended = () => { i.setAttribute('data-lucide', 'Play'); lucide.createIcons(); };
         }
 
-        // Init
-        updateUI();
+        function copyLink(id) {
+            const input = document.getElementById(id);
+            input.select();
+            document.execCommand('copy');
+            
+            // Feedback visual temporal
+            const btn = input.nextElementSibling;
+            const originalIcon = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="Check" class="w-4 h-4 text-emerald-500"></i>`;
+            lucide.createIcons();
+            setTimeout(() => {
+                btn.innerHTML = originalIcon;
+                lucide.createIcons();
+            }, 2000);
+        }
+
+        // --- INIT ---
+        window.addEventListener('load', () => {
+            initDevices();
+            generateRandomRoom();
+            lucide.createIcons();
+        });
     </script>
 </body>
 </html>
