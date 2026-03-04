@@ -127,34 +127,60 @@
             <div class="glass rounded-[2.5rem] p-8 relative overflow-hidden">
                 <div class="scanline"></div>
                 
-                <div class="space-y-6">
-                    <!-- Mic Selection -->
-                    <div class="space-y-2">
-                        <label class="text-[10px] uppercase tracking-widest text-gray-500 font-bold ml-1">Hardware Input</label>
-                        <div class="relative">
-                            <select id="mic-select" class="input-nexus appearance-none pr-10">
-                                <option value="">Cargando micrófonos...</option>
-                            </select>
-                            <i data-lucide="ChevronDown" class="absolute right-4 top-3.5 w-4 h-4 text-gray-500 pointer-events-none"></i>
+                <div class="flex gap-8">
+                    <!-- Audio Control (VU + Fader) -->
+                    <div class="flex flex-col items-center gap-4 w-16">
+                        <div class="h-48 w-4 bg-white/5 rounded-full relative overflow-hidden border border-white/10 shadow-inner">
+                            <div id="vu-bar" class="absolute bottom-0 w-full bg-gradient-to-t from-emerald-500 via-yellow-400 to-brand transition-all duration-75 shadow-[0_0_10px_rgba(255,51,51,0.3)]" style="height: 0%"></div>
                         </div>
+                        <div class="h-48 w-8 relative flex flex-col items-center">
+                            <input type="range" id="gain-fader" min="0" max="2" step="0.01" value="1" orient="vertical" 
+                                class="h-full w-1.5 appearance-none bg-white/10 rounded-full cursor-pointer accent-brand"
+                                style="-webkit-appearance: slider-vertical;">
+                            <span id="gain-value" class="text-[9px] font-mono text-brand mt-2">1.0x</span>
+                        </div>
+                        <span class="text-[8px] font-mono text-gray-500 uppercase tracking-tighter">Gain</span>
                     </div>
 
-                    <!-- Room Name -->
-                    <div class="space-y-2">
-                        <label class="text-[10px] uppercase tracking-widest text-gray-500 font-bold ml-1">Private Room ID</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="room-id" class="input-nexus font-mono" placeholder="SALA_STREAM_HQ">
-                            <button onclick="generateRandomRoom()" class="glass w-12 h-12 rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all">
-                                <i data-lucide="RefreshCcw" class="w-4 h-4"></i>
-                            </button>
+                    <!-- Configuration -->
+                    <div class="flex-1 space-y-6">
+                        <!-- Mic Selection -->
+                        <div class="space-y-2">
+                            <label class="text-[10px] uppercase tracking-widest text-gray-500 font-bold ml-1">Hardware Input</label>
+                            <div class="relative">
+                                <select id="mic-select" class="input-nexus appearance-none pr-10">
+                                    <option value="">Cargando micrófonos...</option>
+                                </select>
+                                <i data-lucide="ChevronDown" class="absolute right-4 top-3.5 w-4 h-4 text-gray-500 pointer-events-none"></i>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Action Button -->
-                    <button id="btn-launch" onclick="launchBroadcast()" class="w-full bg-brand text-white py-5 rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(255,51,51,0.2)] btn-action flex items-center justify-center gap-3">
-                        <i data-lucide="Radio" class="w-5 h-5"></i> Iniciar Emisión Pro
-                    </button>
+                        <!-- Room Name -->
+                        <div class="space-y-2">
+                            <label class="text-[10px] uppercase tracking-widest text-gray-500 font-bold ml-1">Private Room ID</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="room-id" class="input-nexus font-mono" placeholder="SALA_STREAM_HQ">
+                                <button onclick="generateRandomRoom()" class="glass w-12 h-12 rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all">
+                                    <i data-lucide="RefreshCcw" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Action Button -->
+                        <button id="btn-launch" onclick="launchBroadcast()" class="w-full bg-brand text-white py-5 rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(255,51,51,0.2)] btn-action flex items-center justify-center gap-3">
+                            <i data-lucide="Radio" class="w-5 h-5"></i> Iniciar Emisión Pro
+                        </button>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Broadcast View (Iframe) -->
+            <div id="broadcast-container" class="hidden glass rounded-[2.5rem] overflow-hidden aspect-video relative border-brand/30">
+                <div class="absolute top-4 left-4 z-10 flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-brand animate-pulse"></div>
+                    <span class="text-[9px] font-bold uppercase tracking-widest text-white drop-shadow-md">On Air</span>
+                </div>
+                <iframe id="ninja-frame" class="w-full h-full border-none" allow="microphone; camera; autoplay; fullscreen; display-capture; picture-in-picture; clipboard-write;"></iframe>
             </div>
 
             <!-- Links Section -->
@@ -234,14 +260,19 @@
         let state = {
             mics: [],
             selectedMic: null,
-            roomName: ""
+            roomName: "",
+            audioCtx: null,
+            analyser: null,
+            gainNode: null,
+            source: null,
+            stream: null
         };
 
         // --- DEVICE MANAGEMENT ---
         async function initDevices() {
             try {
                 // Pedimos permiso primero para obtener los nombres de los dispositivos
-                await navigator.mediaDevices.getUserMedia({ audio: true });
+                state.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 state.mics = devices.filter(d => d.kind === 'audioinput');
                 
@@ -250,11 +281,71 @@
                     `<option value="${m.deviceId}">${m.label || 'Micrófono Desconocido'}</option>`
                 ).join('');
                 
-                if (state.mics.length > 0) state.selectedMic = state.mics[0].deviceId;
+                if (state.mics.length > 0) {
+                    state.selectedMic = state.mics[0].deviceId;
+                    setupAudioAnalysis(state.selectedMic);
+                }
+
+                select.onchange = (e) => {
+                    state.selectedMic = e.target.value;
+                    setupAudioAnalysis(state.selectedMic);
+                };
+
             } catch (err) {
                 console.error("Error al listar micros:", err);
                 document.getElementById('mic-select').innerHTML = `<option value="">Error al cargar dispositivos</option>`;
             }
+        }
+
+        async function setupAudioAnalysis(deviceId) {
+            if (state.audioCtx) state.audioCtx.close();
+            
+            state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: { deviceId: { exact: deviceId } } 
+            });
+            
+            state.source = state.audioCtx.createMediaStreamSource(stream);
+            state.gainNode = state.audioCtx.createGain();
+            state.analyser = state.audioCtx.createAnalyser();
+            state.analyser.fftSize = 256;
+
+            state.source.connect(state.gainNode);
+            state.gainNode.connect(state.analyser);
+            
+            // El fader controla el GainNode
+            const fader = document.getElementById('gain-fader');
+            const gainValText = document.getElementById('gain-value');
+            fader.oninput = (e) => {
+                const val = parseFloat(e.target.value);
+                state.gainNode.gain.value = val;
+                gainValText.innerText = `${val.toFixed(1)}x`;
+            };
+
+            updateVUMeter();
+        }
+
+        function updateVUMeter() {
+            if (!state.analyser) return;
+            
+            const dataArray = new Uint8Array(state.analyser.frequencyBinCount);
+            const vuBar = document.getElementById('vu-bar');
+
+            const draw = () => {
+                if (!state.analyser) return;
+                state.analyser.getByteFrequencyData(dataArray);
+                
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / dataArray.length;
+                const volume = Math.min(100, (average / 128) * 100);
+                
+                vuBar.style.height = `${volume}%`;
+                requestAnimationFrame(draw);
+            };
+            draw();
         }
 
         function generateRandomRoom() {
@@ -262,27 +353,39 @@
             document.getElementById('room-id').value = `NEXUS_${random}`;
         }
 
-        // --- LINK GENERATION ---
-        function launchBroadcast() {
+        // --- LINK GENERATION & BROADCAST ---
+        async function launchBroadcast() {
+            // Asegurar que el AudioContext esté activo
+            if (state.audioCtx && state.audioCtx.state === 'suspended') {
+                await state.audioCtx.resume();
+            }
+
             const roomId = document.getElementById('room-id').value || "SALA_STREAM_HQ";
             const micId = document.getElementById('mic-select').value;
+            const gainValue = document.getElementById('gain-fader').value;
             
             // Parámetros solicitados para Calidad de Estudio
-            // &ad=${micId} selecciona el micro específico
+            // &autostart=1 para que empiece solo
+            // &clean=1 para quitar interfaz de ninja
             const pushBase = `https://vdo.ninja/?push=${roomId}`;
-            const pushParams = `&audiobitrate=256&stereo=1&echo=0&noise=0&agc=0&codec=opus&ad=${micId}`;
+            const pushParams = `&audiobitrate=256&stereo=1&echo=0&noise=0&agc=0&codec=opus&ad=${micId}&autostart=1&clean=1&gain=${gainValue}`;
             const pushUrl = pushBase + pushParams;
             
             const viewUrl = `https://vdo.ninja/?view=${roomId}&bitrate=256`;
+
+            // Configurar Iframe
+            const frame = document.getElementById('ninja-frame');
+            const container = document.getElementById('broadcast-container');
+            
+            frame.src = pushUrl;
+            container.classList.remove('hidden');
 
             document.getElementById('push-url').value = pushUrl;
             document.getElementById('view-url').value = viewUrl;
             document.getElementById('links-container').classList.remove('hidden');
 
-            // Abrir en nueva pestaña si es posible (opcional)
-            if (confirm("¿Quieres abrir el enlace de emisión ahora?")) {
-                window.open(pushUrl, '_blank');
-            }
+            // Scroll suave hasta el iframe
+            container.scrollIntoView({ behavior: 'smooth' });
             
             lucide.createIcons();
         }
