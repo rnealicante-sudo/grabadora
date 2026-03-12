@@ -30,6 +30,23 @@
             color: #f4f4f5;
             margin: 0;
             overflow: hidden;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Overlay para desbloquear audio en iOS */
+        #audio-unlock {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            text-align: center;
+            padding: 20px;
         }
 
         .font-mono {
@@ -89,10 +106,40 @@
     </style>
 </head>
 <body>
+    <div id="audio-unlock">
+        <div class="bg-blue-600 p-6 rounded-2xl shadow-2xl animate-bounce mb-4">
+            <i data-lucide="Volume2" class="w-12 h-12 text-white"></i>
+        </div>
+        <h2 class="text-xl font-black uppercase tracking-tighter mb-2">Cartuchera Móvil</h2>
+        <p class="text-zinc-400 text-sm mb-6">Toca para activar el sistema de audio<br>(Requerido en iPhone)</p>
+        <button class="bg-white text-black px-8 py-3 rounded-full font-bold uppercase tracking-widest text-xs">Comenzar</button>
+    </div>
+
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useRef, useEffect, useCallback } = React;
+
+        // Desbloqueo global para iOS
+        const unlockAudio = () => {
+            const unlockEl = document.getElementById('audio-unlock');
+            if (unlockEl) unlockEl.style.display = 'none';
+            
+            // Crear y resumir un AudioContext global para "despertar" a iOS
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            const tempCtx = new AudioContextClass();
+            tempCtx.resume();
+            
+            // Crear un silencio corto
+            const oscillator = tempCtx.createOscillator();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(440, tempCtx.currentTime);
+            oscillator.connect(tempCtx.destination);
+            oscillator.start();
+            oscillator.stop(tempCtx.currentTime + 0.001);
+        };
+
+        document.getElementById('audio-unlock').addEventListener('click', unlockAudio);
 
         // Componente de Icono usando Lucide
         const Icon = ({ name, className = "w-4 h-4" }) => {
@@ -129,34 +176,48 @@
             const setupAudioContext = async () => {
                 if (!audioRef.current) return;
                 if (!audioCtxRef.current) {
-                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    const ctx = new AudioContextClass();
                     const source = ctx.createMediaElementSource(audioRef.current);
                     const gain = ctx.createGain();
                     source.connect(gain);
                     gain.connect(ctx.destination);
                     audioCtxRef.current = ctx;
                 }
-                if (audioCtxRef.current.state === 'suspended') await audioCtxRef.current.resume();
+                if (audioCtxRef.current.state === 'suspended') {
+                    await audioCtxRef.current.resume();
+                }
             };
 
             const handleFileChange = (e) => {
                 const f = e.target.files?.[0];
                 if (f) {
-                    setFile(f);
-                    if (audioRef.current) {
-                        const url = URL.createObjectURL(f);
-                        audioRef.current.src = url;
-                        audioRef.current.load(); // Importante para iOS
-                    }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        if (audioRef.current) {
+                            audioRef.current.src = event.target.result;
+                            audioRef.current.load();
+                            setFile(f);
+                        }
+                    };
+                    reader.readAsDataURL(f);
                 }
             };
 
             const play = useCallback(async () => {
                 if (!audioRef.current || !file) return;
                 await setupAudioContext();
-                audioRef.current.play().catch(err => console.error(err));
-                setIsPlaying(true);
-                onStateChange(true);
+                
+                // En iOS, a veces play() necesita ser llamado directamente tras el gesto
+                const playPromise = audioRef.current.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        setIsPlaying(true);
+                        onStateChange(true);
+                    }).catch(err => {
+                        console.error("Error en reproducción iOS:", err);
+                    });
+                }
             }, [file, onStateChange]);
 
             const stop = useCallback(() => {
