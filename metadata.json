@@ -1,7 +1,5 @@
 {
-  "name": "grabadora",
-  "description": "Graba, transcribe y analiza tus audios con inteligencia artificial avanzada.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
+  "name": "Cartuchera movil",
+  "description": "Sistema de emisión de radio optimizado para móviles con 8 cartucheras ergonómicas que caben en una sola pantalla, fondo azul claro y diseño ligero.",
+  "requestFramePermissions": []
 }
