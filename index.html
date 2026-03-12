@@ -298,6 +298,18 @@
                 if (onTrigger) onTrigger(togglePlay);
             }, [onTrigger, togglePlay]);
 
+            const clearAudio = (e) => {
+                e.stopPropagation();
+                if (isPlaying) stop();
+                setFile(null);
+                setCurrentTime(0);
+                setDuration(0);
+                if (audioRef.current) {
+                    audioRef.current.src = "";
+                    audioRef.current.load();
+                }
+            };
+
             const formatTime = (time) => {
                 const m = Math.floor(time / 60);
                 const s = Math.floor(time % 60);
@@ -317,18 +329,29 @@
                     </div>
 
                     <div className="flex-1 flex flex-col px-3 py-2 justify-center gap-2 relative">
-                        {file ? (
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-[10px] font-bold truncate text-zinc-400 uppercase tracking-wider">{file.name}</h3>
-                            </div>
-                        ) : (
+                        <div className="flex items-center gap-2 z-10">
+                            <button 
+                                onClick={clearAudio}
+                                className={`p-1 transition-colors flex-shrink-0 ${file ? 'text-zinc-400 hover:text-red-500' : 'text-zinc-800 pointer-events-none'}`}
+                                title="Eject / Limpiar"
+                            >
+                                <Icon name="Eject" className="w-3.5 h-3.5 fill-current" />
+                            </button>
+                            {file ? (
+                                <h3 className="text-[10px] font-bold truncate text-zinc-400 uppercase tracking-wider flex-1">{file.name}</h3>
+                            ) : (
+                                <span className="text-[8px] font-black text-zinc-700 uppercase tracking-widest">Vacío</span>
+                            )}
+                        </div>
+
+                        {!file && (
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <label 
                                     htmlFor={`file-input-${index}`}
                                     className="cursor-pointer flex flex-col items-center gap-1 text-zinc-500 hover:text-blue-400 active:scale-95 transition-transform"
                                 >
-                                    <Icon name="Upload" className="w-6 h-6" />
-                                    <span className="text-[10px] font-black uppercase">CARGAR AUDIO</span>
+                                    <Icon name="Upload" className="w-5 h-5" />
+                                    <span className="text-[9px] font-black uppercase">Cargar</span>
                                     <input 
                                         id={`file-input-${index}`}
                                         type="file" 
