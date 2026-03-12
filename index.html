@@ -411,8 +411,11 @@
                                 <div className={`w-3 h-3 bg-white rounded-sm ${isPlaying ? 'opacity-100' : 'opacity-20'}`} />
                             </button>
                         </div>
-                        <div onClick={() => setTimeMode(prev => prev === 'elapsed' ? 'remaining' : 'elapsed')} className="bg-[#3498db] border border-blue-400/30 rounded-sm flex-1 flex items-center justify-center cursor-pointer overflow-hidden">
-                            <span className="text-[26px] font-mono font-black text-white leading-none tracking-tighter">
+                        <div 
+                            onClick={() => setTimeMode(prev => prev === 'elapsed' ? 'remaining' : 'elapsed')} 
+                            className={`border border-white/10 rounded-sm flex-1 flex items-center justify-center cursor-pointer overflow-hidden transition-colors duration-200 ${isEnding ? 'bg-red-600 animate-pulse' : 'bg-[#3498db]'}`}
+                        >
+                            <span className="text-[22px] font-mono font-black text-white leading-none tracking-tighter">
                                 {timeMode === 'elapsed' ? formatTime(currentTime) : `-${formatTime(remainingTime)}`}
                             </span>
                         </div>
