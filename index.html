@@ -52,22 +52,27 @@
         /* Vúmetro segmentado */
         .vu-container {
             display: flex;
-            gap: 2px;
-            height: 12px;
+            gap: 1px;
+            height: 20px;
             width: 100%;
             background: #000;
             padding: 2px;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid #444;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
         }
         .vu-bar {
             flex: 1;
             height: 100%;
-            background: #1a1a1a;
-            transition: background 0.1s;
+            background: #111;
+            transition: background 0.05s;
         }
-        .vu-bar.active-green { background: #10b981; box-shadow: 0 0 5px #10b981; }
-        .vu-bar.active-yellow { background: #f59e0b; box-shadow: 0 0 5px #f59e0b; }
-        .vu-bar.active-red { background: #ef4444; box-shadow: 0 0 5px #ef4444; }
+        .vu-bar.active-green { background: #00ff00; box-shadow: 0 0 8px rgba(0, 255, 0, 0.5); }
+        .vu-bar.active-yellow { background: #ffff00; box-shadow: 0 0 8px rgba(255, 255, 0, 0.5); }
+        .vu-bar.active-red { background: #ff0000; box-shadow: 0 0 8px rgba(255, 0, 0, 0.5); }
 
         .font-mono {
             font-family: 'JetBrains Mono', monospace;
@@ -162,15 +167,17 @@
         document.getElementById('audio-unlock').addEventListener('click', unlockAudio);
 
         // Componente de Vúmetro
-        const VuMeter = ({ active }) => {
-            const bars = Array.from({ length: 24 });
+        const VuMeter = ({ level }) => {
+            const bars = Array.from({ length: 60 });
             return (
                 <div className="vu-container">
                     {bars.map((_, i) => {
+                        const threshold = i / bars.length;
+                        const isActive = level > threshold;
                         let colorClass = "";
-                        if (active) {
-                            if (i < 16) colorClass = "active-green";
-                            else if (i < 20) colorClass = "active-yellow";
+                        if (isActive) {
+                            if (i < bars.length * 0.6) colorClass = "active-green";
+                            else if (i < bars.length * 0.85) colorClass = "active-yellow";
                             else colorClass = "active-red";
                         }
                         return <div key={i} className={`vu-bar ${colorClass}`} />;
@@ -195,7 +202,7 @@
         };
 
         // Componente de cada Cartuchera
-        const CartItem = ({ index, masterVolume, onStateChange, onNext }) => {
+        const CartItem = ({ index, masterVolume, masterAudio, onStateChange, onNext }) => {
             const [file, setFile] = useState(null);
             const [isPlaying, setIsPlaying] = useState(false);
             const [isLooping, setIsLooping] = useState(false);
@@ -205,25 +212,32 @@
             const [timeMode, setTimeMode] = useState('remaining');
             
             const audioRef = useRef(null);
-            const audioCtxRef = useRef(null);
+            const sourceNodeRef = useRef(null);
+            const gainNodeRef = useRef(null);
 
             useEffect(() => {
-                if (audioRef.current) audioRef.current.volume = masterVolume;
+                if (gainNodeRef.current) {
+                    gainNodeRef.current.gain.value = masterVolume;
+                }
             }, [masterVolume]);
 
             const setupAudioContext = async () => {
-                if (!audioRef.current) return;
-                if (!audioCtxRef.current) {
-                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                    const ctx = new AudioContextClass();
+                if (!audioRef.current || !masterAudio.ctx) return;
+                
+                if (!sourceNodeRef.current) {
+                    const ctx = masterAudio.ctx;
                     const source = ctx.createMediaElementSource(audioRef.current);
                     const gain = ctx.createGain();
+                    
                     source.connect(gain);
-                    gain.connect(ctx.destination);
-                    audioCtxRef.current = ctx;
+                    gain.connect(masterAudio.analyser);
+                    
+                    sourceNodeRef.current = source;
+                    gainNodeRef.current = gain;
                 }
-                if (audioCtxRef.current.state === 'suspended') {
-                    await audioCtxRef.current.resume();
+                
+                if (masterAudio.ctx.state === 'suspended') {
+                    await masterAudio.ctx.resume();
                 }
             };
 
@@ -297,14 +311,23 @@
                             </div>
                         ) : (
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <label className="cursor-pointer flex flex-col items-center gap-1 text-zinc-500 hover:text-blue-400">
+                                <label 
+                                    htmlFor={`file-input-${index}`}
+                                    className="cursor-pointer flex flex-col items-center gap-1 text-zinc-500 hover:text-blue-400 active:scale-95 transition-transform"
+                                >
                                     <Icon name="Upload" className="w-6 h-6" />
                                     <span className="text-[10px] font-black uppercase">CARGAR AUDIO</span>
-                                    <input type="file" className="hidden" accept="audio/*,video/*,.mp3,.wav,.m4a,.aac" onChange={handleFileChange} />
+                                    <input 
+                                        id={`file-input-${index}`}
+                                        type="file" 
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                                        accept="audio/*,video/*,.mp3,.wav,.m4a,.aac" 
+                                        onChange={handleFileChange} 
+                                    />
                                 </label>
                             </div>
                         )}
-                        <div className={`relative flex items-center ${!file ? 'opacity-20 pointer-events-none' : ''}`}>
+                        <div className={`relative flex items-center ${!file ? 'opacity-0 pointer-events-none' : ''}`}>
                             <input 
                                 type="range" min="0" max={duration || 0} step="0.1" value={currentTime}
                                 onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = parseFloat(e.target.value); }}
@@ -356,8 +379,42 @@
         const App = () => {
             const [playingCount, setPlayingCount] = useState(0);
             const [masterVolume, setMasterVolume] = useState(1);
+            const [vuLevel, setVuLevel] = useState(0);
+            const [masterAudio, setMasterAudio] = useState({ ctx: null, analyser: null });
             const cartTriggers = useRef({});
             const cartsPerPage = 8;
+
+            useEffect(() => {
+                const handleUnlock = () => {
+                    if (masterAudio.ctx) return;
+                    
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    const ctx = new AudioContextClass();
+                    const analyser = ctx.createAnalyser();
+                    analyser.fftSize = 256;
+                    analyser.connect(ctx.destination);
+                    
+                    setMasterAudio({ ctx, analyser });
+
+                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    const updateVu = () => {
+                        analyser.getByteFrequencyData(dataArray);
+                        let sum = 0;
+                        for (let i = 0; i < dataArray.length; i++) {
+                            sum += dataArray[i];
+                        }
+                        const average = sum / dataArray.length;
+                        // Ajuste de sensibilidad para el vúmetro
+                        const normalized = Math.min(1, (average / 100) * 1.5);
+                        setVuLevel(normalized);
+                        requestAnimationFrame(updateVu);
+                    };
+                    updateVu();
+                };
+
+                document.getElementById('audio-unlock').addEventListener('click', handleUnlock);
+                return () => document.getElementById('audio-unlock').removeEventListener('click', handleUnlock);
+            }, [masterAudio.ctx]);
 
             const handleStateChange = (isPlaying) => {
                 setPlayingCount(prev => isPlaying ? prev + 1 : Math.max(0, prev - 1));
@@ -371,8 +428,9 @@
             };
 
             return (
-                <div className="min-h-screen bg-[#222] text-zinc-100 flex flex-col">
-                    <header className="bg-[#1a1a1a] border-b border-zinc-800 sticky top-0 z-50">
+                <div className="min-h-screen bg-[#222] text-zinc-100 flex flex-col pt-[20px]">
+                    <VuMeter level={vuLevel} />
+                    <header className="bg-[#1a1a1a] border-b border-zinc-800 sticky top-[20px] z-50">
                         <div className="max-w-[800px] mx-auto px-4 py-2 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <Icon name="Radio" className="w-4 h-4 text-blue-400" />
@@ -385,13 +443,12 @@
                                 </div>
                             )}
                         </div>
-                        <VuMeter active={playingCount > 0} />
                     </header>
 
                     <main className="max-w-[800px] w-full mx-auto p-3 flex-1 overflow-hidden">
                         <div className="h-full flex flex-col gap-2">
                             {Array.from({ length: cartsPerPage }).map((_, i) => (
-                                <CartItem key={i} index={i} masterVolume={masterVolume} onTrigger={(fn) => cartTriggers.current[i] = fn} onStateChange={handleStateChange} onNext={() => triggerNext(i)} />
+                                <CartItem key={i} index={i} masterVolume={masterVolume} masterAudio={masterAudio} onTrigger={(fn) => cartTriggers.current[i] = fn} onStateChange={handleStateChange} onNext={() => triggerNext(i)} />
                             ))}
                         </div>
                     </main>
