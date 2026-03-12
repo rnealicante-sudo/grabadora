@@ -1,13 +1,330 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sound PM Studio</title>
-  </head>
-  <body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartuchera Móvil - Emisión Profesional</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Framer Motion -->
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #222;
+            color: #f4f4f5;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom range input styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 2px;
+            background: #ffffff;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #333;
+            border-radius: 2px;
+        }
+
+        /* Master fader specific */
+        .master-fader::-webkit-slider-thumb {
+            height: 24px;
+            width: 12px;
+            background: #3498db;
+            margin-top: -10px;
+        }
+
+        @keyframes pulse-red {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .animate-pulse-red {
+            animation: pulse-red 1s infinite;
+        }
+    </style>
+</head>
+<body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useCallback, useMemo } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // --- Icon Component ---
+        const Icon = ({ name, className = "w-4 h-4" }) => {
+            const iconRef = useRef(null);
+            useEffect(() => {
+                if (iconRef.current) {
+                    lucide.createIcons({
+                        attrs: { class: className },
+                        nameAttr: 'data-lucide',
+                        icons: { [name]: lucide.icons[name] }
+                    });
+                }
+            }, [name, className]);
+            return <i ref={iconRef} data-lucide={name} className={className}></i>;
+        };
+
+        // --- CartItem Component ---
+        const CartItem = ({ index, outputDeviceId, masterVolume, onTrigger, onStateChange, onNext }) => {
+            const [file, setFile] = useState(null);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [isLooping, setIsLooping] = useState(false);
+            const [isLinked, setIsLinked] = useState(false);
+            const [currentTime, setCurrentTime] = useState(0);
+            const [duration, setDuration] = useState(0);
+            const [timeMode, setTimeMode] = useState('remaining');
+            
+            const audioRef = useRef(null);
+            const audioCtxRef = useRef(null);
+            const gainRef = useRef(null);
+
+            useEffect(() => {
+                if (audioRef.current) {
+                    audioRef.current.volume = masterVolume;
+                }
+            }, [masterVolume]);
+
+            useEffect(() => {
+                const saved = localStorage.getItem(`cart_settings_${index}`);
+                if (saved) {
+                    const settings = JSON.parse(saved);
+                    setIsLooping(settings.isLooping);
+                    setIsLinked(settings.isLinked || false);
+                }
+            }, [index]);
+
+            useEffect(() => {
+                const settings = { isLooping, isLinked, fileName: file?.name };
+                localStorage.setItem(`cart_settings_${index}`, JSON.stringify(settings));
+            }, [isLooping, isLinked, file, index]);
+
+            const setupAudioContext = async () => {
+                if (!audioRef.current) return;
+                if (!audioCtxRef.current) {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const source = ctx.createMediaElementSource(audioRef.current);
+                    const gain = ctx.createGain();
+                    source.connect(gain);
+                    gain.connect(ctx.destination);
+                    audioCtxRef.current = ctx;
+                    gainRef.current = gain;
+                    gain.gain.value = masterVolume;
+                }
+                if (audioCtxRef.current.state === 'suspended') {
+                    await audioCtxRef.current.resume();
+                }
+            };
+
+            const handleFileChange = (e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                    setFile(f);
+                    if (audioRef.current) {
+                        audioRef.current.src = URL.createObjectURL(f);
+                    }
+                }
+            };
+
+            const play = useCallback(async () => {
+                if (!audioRef.current || !file) return;
+                await setupAudioContext();
+                audioRef.current.play().catch(err => console.error(err));
+                setIsPlaying(true);
+                onStateChange(true);
+            }, [file, onStateChange]);
+
+            const stop = useCallback(() => {
+                if (audioRef.current) {
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                    setIsPlaying(false);
+                    onStateChange(false);
+                }
+            }, [onStateChange]);
+
+            const togglePlay = useCallback(async (forcePlay) => {
+                if (forcePlay === true) await play();
+                else if (isPlaying) stop();
+                else await play();
+            }, [isPlaying, play, stop]);
+
+            useEffect(() => {
+                if (onTrigger) onTrigger(togglePlay);
+            }, [togglePlay, onTrigger]);
+
+            const formatTime = (time) => {
+                const m = Math.floor(time / 60);
+                const s = Math.floor(time % 60);
+                return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            };
+
+            const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+            const remainingTime = duration - currentTime;
+
+            return (
+                <div className={`group relative border border-zinc-700 transition-all flex h-[85px] select-none overflow-hidden rounded-sm ${isPlaying ? 'bg-[#2a2a2a]' : 'bg-[#1a1a1a]'} shadow-inner`}>
+                    <div onClick={() => file && togglePlay()} className={`w-14 flex items-center justify-center border-r border-zinc-700 transition-colors cursor-pointer ${isPlaying ? 'bg-blue-900/40' : 'bg-[#252525] hover:bg-[#333]'}`}>
+                        <span className={`text-4xl font-bold ${isPlaying ? 'text-blue-400' : 'text-zinc-500'}`}>{index + 1}</span>
+                    </div>
+
+                    <div className="flex-1 flex flex-col px-3 py-2 justify-center gap-2 relative">
+                        {file ? (
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-[10px] font-bold truncate text-zinc-400 uppercase tracking-wider max-w-[150px]">{file.name}</h3>
+                            </div>
+                        ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <label className="cursor-pointer flex flex-col items-center gap-1 text-zinc-500 hover:text-blue-400 transition-all group/load">
+                                    <Icon name="Upload" className="w-6 h-6" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">CARGAR AUDIO</span>
+                                    <input type="file" className="hidden" accept="audio/*" onChange={handleFileChange} />
+                                </label>
+                            </div>
+                        )}
+                        <div className={`relative flex items-center ${!file ? 'opacity-20 pointer-events-none' : ''}`}>
+                            <input 
+                                type="range" min="0" max={duration || 0} step="0.1" value={currentTime}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (audioRef.current) audioRef.current.currentTime = val;
+                                }}
+                                className="w-full h-4 bg-zinc-800 rounded-sm appearance-none cursor-pointer accent-zinc-300 border border-zinc-700"
+                                style={{ background: `linear-gradient(to right, #5dade2 ${progress}%, #333 ${progress}%)` }}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="w-28 flex flex-col p-1.5 gap-1 border-l border-zinc-700 bg-[#222]">
+                        <div className="flex items-center justify-end gap-2 px-1">
+                            <label className="cursor-pointer">
+                                <input type="checkbox" className="hidden" checked={isLooping} onChange={(e) => setIsLooping(e.target.checked)} />
+                                <Icon name="RotateCcw" className={`w-3 h-3 ${isLooping ? 'text-blue-400' : 'text-zinc-600'}`} />
+                            </label>
+                            <label className="cursor-pointer">
+                                <input type="checkbox" className="hidden" checked={isLinked} onChange={(e) => setIsLinked(e.target.checked)} />
+                                <Icon name="Zap" className={`w-3 h-3 ${isLinked ? 'text-blue-400' : 'text-zinc-600'}`} />
+                            </label>
+                            <button onClick={() => file && togglePlay()} className={`w-5 h-5 rounded-sm flex items-center justify-center transition-all border border-black/40 ${!file ? 'bg-zinc-800' : isPlaying ? 'bg-red-600' : 'bg-zinc-700'}`}>
+                                <div className={`w-2 h-2 bg-white rounded-sm ${isPlaying ? 'opacity-100' : 'opacity-20'}`} />
+                            </button>
+                        </div>
+                        <div onClick={() => setTimeMode(prev => prev === 'elapsed' ? 'remaining' : 'elapsed')} className="bg-[#3498db] border border-blue-400/30 rounded-sm flex-1 flex items-center justify-end pr-1 cursor-pointer shadow-inner">
+                            <span className="text-sm font-mono font-black text-white leading-none tracking-tighter">
+                                {timeMode === 'elapsed' ? formatTime(currentTime) : `-${formatTime(remainingTime)}`}
+                            </span>
+                        </div>
+                    </div>
+
+                    <audio ref={audioRef} loop={isLooping} onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)} onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)} onEnded={() => { setIsPlaying(false); onStateChange(false); if (isLinked && onNext) onNext(); }} />
+                </div>
+            );
+        };
+
+        // --- Main App Component ---
+        const App = () => {
+            const [playingCount, setPlayingCount] = useState(0);
+            const [masterVolume, setMasterVolume] = useState(1);
+            const cartTriggers = useRef({});
+            const cartsPerPage = 8;
+
+            const handleStateChange = (isPlaying) => {
+                setPlayingCount(prev => isPlaying ? prev + 1 : Math.max(0, prev - 1));
+            };
+
+            const triggerNext = (currentIndex) => {
+                const nextIndex = currentIndex + 1;
+                if (nextIndex < cartsPerPage && cartTriggers.current[nextIndex]) {
+                    cartTriggers.current[nextIndex](true);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-[#222] text-zinc-100 flex flex-col">
+                    <header className="bg-[#1a1a1a] border-b border-zinc-800 sticky top-0 z-50">
+                        <div className="max-w-[800px] mx-auto px-4 py-2 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Icon name="Radio" className="w-4 h-4 text-blue-400" />
+                                <h1 className="text-xs font-black tracking-widest uppercase text-zinc-300">OnAir Multi <span className="text-blue-500">- EMISIÓN</span></h1>
+                            </div>
+                            {playingCount > 0 && (
+                                <div className="px-2 py-0.5 bg-red-900/40 rounded border border-red-600 flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse-red" />
+                                    <span className="text-red-400 font-bold uppercase text-[8px]">ON AIR</span>
+                                </div>
+                            )}
+                        </div>
+                    </header>
+
+                    <main className="max-w-[800px] w-full mx-auto p-3 flex-1 overflow-hidden">
+                        <div className="h-full flex flex-col gap-2">
+                            {Array.from({ length: cartsPerPage }).map((_, i) => (
+                                <CartItem key={i} index={i} masterVolume={masterVolume} onTrigger={(fn) => cartTriggers.current[i] = fn} onStateChange={handleStateChange} onNext={() => triggerNext(i)} />
+                            ))}
+                        </div>
+                    </main>
+
+                    <div className="bg-[#1a1a1a] border-t border-zinc-800 p-3 shadow-2xl z-50">
+                        <div className="max-w-[800px] mx-auto flex flex-col gap-3">
+                            <div className="flex items-center gap-4">
+                                <Icon name={masterVolume === 0 ? "VolumeX" : "Volume2"} className="w-5 h-5 text-blue-400" />
+                                <div className="flex-1 relative h-8 flex items-center">
+                                    <input type="range" min="0" max="1" step="0.01" value={masterVolume} onChange={(e) => setMasterVolume(parseFloat(e.target.value))} className="master-fader w-full h-1.5 bg-zinc-800 rounded-full appearance-none cursor-pointer" style={{ background: `linear-gradient(to right, #3498db ${masterVolume * 100}%, #333 ${masterVolume * 100}%)` }} />
+                                </div>
+                                <span className="text-[10px] font-bold text-zinc-400">{Math.round(masterVolume * 100)}%</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-[8px] font-bold uppercase tracking-widest text-zinc-600">Cartuchera Móvil v1.0</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[9px] font-bold text-emerald-500 uppercase">Sistema Listo</span>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
 </html>
